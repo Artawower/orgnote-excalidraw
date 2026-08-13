@@ -105,7 +105,17 @@ export const createExcalidrawReader = (api: OrgNoteApi) => {
 				host?.destroy();
 			});
 
-			return () => h("div", { ref: container, class: "excalidraw-reader" });
+			return () =>
+				h("div", {
+					ref: container,
+					class: "excalidraw-reader",
+					style: {
+						width: "100%",
+						height: "100%",
+						minHeight: 0,
+						overflow: "hidden",
+					},
+				});
 		},
 	});
 };

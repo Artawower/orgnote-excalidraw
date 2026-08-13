@@ -10,7 +10,8 @@
     "lint": "eslint -c eslint.config.js \"src/**/*.{ts,vue}\" \"scripts/**/*.ts\" vite.config.ts",
     "test": "vitest",
     "test:ci": "vitest run",
-    "typecheck": "vue-tsc --noEmit -p tsconfig.json"
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json",
+    "verify:release": "bun run build && bun scripts/verify-release.ts && bun scripts/smoke-release.ts"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "0.18.1",

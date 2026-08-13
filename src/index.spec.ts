@@ -11,6 +11,13 @@ import type { OrgNoteApi } from "orgnote-api";
 import { EXCALIDRAW_VIEWER_ID } from "./constants";
 import { excalidrawExtension } from "./index";
 
+const removeAssistantFonts = vi.fn();
+const removeRuntimeAssetFetch = vi.fn();
+vi.mock("./runtime-assets", () => ({
+	installAssistantFonts: vi.fn(async () => removeAssistantFonts),
+	installRuntimeAssetFetch: vi.fn(() => removeRuntimeAssetFetch),
+}));
+
 const register = vi.fn();
 const unregister = vi.fn();
 const api = {
@@ -49,4 +56,6 @@ test("Excalidraw extension unregisters its viewer on deactivation", async () => 
 	await excalidrawExtension.onUnmounted?.(api);
 
 	expect(unregister).toHaveBeenCalledWith(EXCALIDRAW_VIEWER_ID);
+	expect(removeAssistantFonts).toHaveBeenCalledOnce();
+	expect(removeRuntimeAssetFetch).toHaveBeenCalledOnce();
 });

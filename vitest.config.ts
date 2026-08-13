@@ -1,6 +1,12 @@
+import path from "node:path";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+	resolve: {
+		alias: {
+			"orgnote-api": path.resolve("node_modules/orgnote-api"),
+		},
+	},
 	test: {
 		environment: "happy-dom",
 		globals: true,

@@ -1,7 +1,10 @@
 import type { BufferViewerEntry, Extension } from "orgnote-api";
 import { createExcalidrawReader } from "./ExcalidrawReader";
 import { excalidrawManifest } from "./manifest";
-import { installRuntimeAssetFetch } from "./runtime-assets";
+import {
+	installAssistantFonts,
+	installRuntimeAssetFetch,
+} from "./runtime-assets";
 import {
 	EXCALIDRAW_FILE_PATTERN,
 	EXCALIDRAW_VIEWER_ID,
@@ -22,19 +25,24 @@ const createViewer = (
 	},
 });
 
-let removeRuntimeAssetFetch: (() => void) | undefined;
+let releaseRuntimeAssets: (() => void) | undefined;
 
 export const excalidrawExtension: Extension = {
-	onMounted: (api) => {
-		removeRuntimeAssetFetch = installRuntimeAssetFetch(api);
+	onMounted: async (api) => {
+		const removeAssistantFonts = await installAssistantFonts(api);
+		const removeRuntimeAssetFetch = installRuntimeAssetFetch(api);
+		releaseRuntimeAssets = () => {
+			removeAssistantFonts();
+			removeRuntimeAssetFetch();
+		};
 		api.core
 			.useBufferViewer()
 			.register(createViewer(createExcalidrawReader(api)));
 	},
 	onUnmounted: (api) => {
 		api.core.useBufferViewer().unregister(EXCALIDRAW_VIEWER_ID);
-		removeRuntimeAssetFetch?.();
-		removeRuntimeAssetFetch = undefined;
+		releaseRuntimeAssets?.();
+		releaseRuntimeAssets = undefined;
 	},
 };
 
