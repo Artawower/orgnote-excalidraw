@@ -1,52 +1,52 @@
-import { beforeEach, expect, test, vi } from 'vitest';
+import { beforeEach, expect, test, vi } from "vitest";
 import {
-  defineComponent,
-  h,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  watch,
-} from 'vue';
-import type { OrgNoteApi } from 'orgnote-api';
-import { EXCALIDRAW_VIEWER_ID } from './constants';
-import { excalidrawExtension } from './index';
+	defineComponent,
+	h,
+	onBeforeUnmount,
+	onMounted,
+	ref,
+	watch,
+} from "vue";
+import type { OrgNoteApi } from "orgnote-api";
+import { EXCALIDRAW_VIEWER_ID } from "./constants";
+import { excalidrawExtension } from "./index";
 
 const register = vi.fn();
 const unregister = vi.fn();
 const api = {
-  core: {
-    useBufferViewer: () => ({ register, unregister }),
-  },
-  vue: {
-    defineComponent,
-    h,
-    onBeforeUnmount,
-    onMounted,
-    ref,
-    watch,
-  },
+	core: {
+		useBufferViewer: () => ({ register, unregister }),
+	},
+	vue: {
+		defineComponent,
+		h,
+		onBeforeUnmount,
+		onMounted,
+		ref,
+		watch,
+	},
 } as unknown as OrgNoteApi;
 
 beforeEach(() => {
-  vi.clearAllMocks();
+	vi.clearAllMocks();
 });
 
-test('Excalidraw extension registers a versioned file viewer', async () => {
-  await excalidrawExtension.onMounted?.(api);
+test("Excalidraw extension registers a versioned file viewer", async () => {
+	await excalidrawExtension.onMounted?.(api);
 
-  expect(register).toHaveBeenCalledWith(
-    expect.objectContaining({
-      pattern: '\\.excalidraw$',
-      meta: expect.objectContaining({
-        id: EXCALIDRAW_VIEWER_ID,
-        viewState: { version: 1 },
-      }),
-    }),
-  );
+	expect(register).toHaveBeenCalledWith(
+		expect.objectContaining({
+			pattern: "\\.excalidraw$",
+			meta: expect.objectContaining({
+				id: EXCALIDRAW_VIEWER_ID,
+				viewState: { version: 1 },
+			}),
+		}),
+	);
 });
 
-test('Excalidraw extension unregisters its viewer on deactivation', async () => {
-  await excalidrawExtension.onUnmounted?.(api);
+test("Excalidraw extension unregisters its viewer on deactivation", async () => {
+	await excalidrawExtension.onUnmounted?.(api);
 
-  expect(unregister).toHaveBeenCalledWith(EXCALIDRAW_VIEWER_ID);
+	expect(unregister).toHaveBeenCalledWith(EXCALIDRAW_VIEWER_ID);
 });

@@ -4,9 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "bun run clear && vite build",
+    "build": "bun run clear && bun run generate:assets && vite build",
     "clear": "rm -rf dist",
-    "lint": "eslint -c eslint.config.js \"src/**/*.{ts,vue}\"",
+    "generate:assets": "bun scripts/generate-assets.ts",
+    "lint": "eslint -c eslint.config.js \"src/**/*.{ts,vue}\" \"scripts/**/*.ts\" vite.config.ts",
     "test": "vitest",
     "test:ci": "vitest run",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json"
