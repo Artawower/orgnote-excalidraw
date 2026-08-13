@@ -4,6 +4,7 @@ import path from "node:path";
 import type { ExtensionAssetDescriptor } from "orgnote-api";
 
 const ASSETS_DIRECTORY = "assets";
+const RUNTIME_PATH = "dist/assets/runtime.js";
 const OUTPUT_PATH = "src/generated-assets.ts";
 
 const listFiles = async (directory: string): Promise<string[]> => {
@@ -19,12 +20,14 @@ const listFiles = async (directory: string): Promise<string[]> => {
 
 const createDescriptor = async (
 	filePath: string,
+	assetPath = path.relative(ASSETS_DIRECTORY, filePath),
+	mediaType = "font/woff2",
 ): Promise<ExtensionAssetDescriptor> => {
 	const content = await readFile(filePath);
 	const digest = createHash("sha256").update(content).digest("base64");
 	return {
-		path: path.relative(ASSETS_DIRECTORY, filePath).split(path.sep).join("/"),
-		mediaType: "font/woff2",
+		path: assetPath.split(path.sep).join("/"),
+		mediaType,
 		size: content.byteLength,
 		integrity: `sha256-${digest}`,
 	};
@@ -36,5 +39,15 @@ const serializeDescriptors = (
 	`import type { ExtensionAssetDescriptor } from 'orgnote-api';\n\nexport const extensionAssets = ${JSON.stringify(descriptors, null, 2)} as const satisfies readonly ExtensionAssetDescriptor[];\n`;
 
 const files = await listFiles(ASSETS_DIRECTORY);
-const descriptors = await Promise.all(files.map(createDescriptor));
-await writeFile(OUTPUT_PATH, serializeDescriptors(descriptors));
+const descriptors = await Promise.all(
+	files.map((filePath) => createDescriptor(filePath)),
+);
+const runtimeDescriptor = await createDescriptor(
+	RUNTIME_PATH,
+	"runtime.js",
+	"text/javascript",
+);
+await writeFile(
+	OUTPUT_PATH,
+	serializeDescriptors([...descriptors, runtimeDescriptor]),
+);

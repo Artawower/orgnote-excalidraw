@@ -29,7 +29,7 @@ test("readRuntimeAsset reads a declared asset through OrgNote filesystem", async
 
 	expect(new Uint8Array(content)).toEqual(new Uint8Array([1, 2, 3]));
 	expect(readFile).toHaveBeenCalledWith(
-		".orgnote/extensions/excalidraw/0.1.0/assets/fonts/Virgil/Virgil-Regular.woff2",
+		".orgnote/extensions/excalidraw/0.1.4/assets/fonts/Virgil/Virgil-Regular.woff2",
 		"binary",
 	);
 });

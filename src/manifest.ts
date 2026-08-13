@@ -3,7 +3,7 @@ import { extensionAssets } from "./generated-assets";
 
 export const excalidrawManifest: ExtensionManifest = {
 	name: "excalidraw",
-	version: "0.1.0",
+	version: "0.1.4",
 	category: "extension",
 	description: "Open and edit Excalidraw drawings",
 	source: {

@@ -13,6 +13,7 @@ const FONT_FETCH_PATTERN =
 const ASSETS_DIRECTORY = "assets";
 const DIST_DIRECTORY = "dist";
 const RUNTIME_ASSET_PREFIX = "orgnote-extension-asset:";
+
 const createRuntimeAssetUri = (assetPath: string): string =>
 	`${RUNTIME_ASSET_PREFIX}${assetPath}`;
 
@@ -30,7 +31,7 @@ const copyDirectory = async (source: string, target: string): Promise<void> => {
 	);
 };
 
-const runtimeAssetsPlugin = (): Plugin => ({
+const runtimeAssetsPlugin = (isEntryBuild: boolean): Plugin => ({
 	name: "orgnote-runtime-assets",
 	enforce: "pre",
 	transform(code, id) {
@@ -50,6 +51,7 @@ const runtimeAssetsPlugin = (): Plugin => ({
 			.replace(FONT_FETCH_PATTERN, "globalThis.__orgnoteExcalidrawFetch($1)");
 	},
 	async closeBundle() {
+		if (!isEntryBuild) return;
 		await copyDirectory(ASSETS_DIRECTORY, path.join(DIST_DIRECTORY, "assets"));
 		await writeFile(
 			path.join(DIST_DIRECTORY, "manifest.json"),
@@ -58,26 +60,23 @@ const runtimeAssetsPlugin = (): Plugin => ({
 	},
 });
 
-export default defineConfig({
-	plugins: [runtimeAssetsPlugin()],
-	resolve: {
-		alias: {
-			"orgnote-api": path.resolve("node_modules/orgnote-api"),
+export default defineConfig(({ mode }) => {
+	const isEntryBuild = mode === "entry";
+	return {
+		plugins: [runtimeAssetsPlugin(isEntryBuild)],
+		resolve: {
+			alias: { "orgnote-api": path.resolve("node_modules/orgnote-api") },
 		},
-	},
-	build: {
-		target: "es2022",
-		minify: "esbuild",
-		cssCodeSplit: false,
-		lib: {
-			entry: "src/index.ts",
-			formats: ["es"],
-			fileName: () => "index.js",
-		},
-		rollupOptions: {
-			output: {
-				inlineDynamicImports: true,
+		build: {
+			target: "es2022",
+			minify: "esbuild",
+			emptyOutDir: false,
+			lib: {
+				entry: isEntryBuild ? "src/index.ts" : "src/runtime-entry.ts",
+				formats: ["es"],
+				fileName: () => (isEntryBuild ? "index.js" : "assets/runtime.js"),
 			},
+			rollupOptions: { output: { inlineDynamicImports: true } },
 		},
-	},
+	};
 });

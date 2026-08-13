@@ -6,7 +6,9 @@ import { excalidrawManifest } from "../src/manifest";
 
 const DIST_DIRECTORY = "dist";
 const ENTRY_PATH = path.join(DIST_DIRECTORY, "index.js");
+const RUNTIME_PATH = path.join(DIST_DIRECTORY, "assets", "runtime.js");
 const MANIFEST_PATH = path.join(DIST_DIRECTORY, "manifest.json");
+const MAX_ENTRY_SIZE = 500_000;
 const RUNTIME_ASSET_PREFIX = "orgnote-extension-asset:";
 
 class ReleaseVerificationError extends Error {
@@ -29,21 +31,37 @@ const listFiles = async (directory: string): Promise<string[]> => {
 
 const verifyEntry = async (): Promise<void> => {
 	const files = await listFiles(DIST_DIRECTORY);
-	const javascriptFiles = files.filter((file) => file.endsWith(".js"));
-	if (javascriptFiles.length !== 1 || javascriptFiles[0] !== ENTRY_PATH) {
+	const javascriptFiles = files.filter((file) => file.endsWith(".js")).sort();
+	const expectedFiles = [ENTRY_PATH, RUNTIME_PATH].sort();
+	if (JSON.stringify(javascriptFiles) !== JSON.stringify(expectedFiles)) {
 		throw new ReleaseVerificationError(
-			"Release must contain exactly dist/index.js",
+			"Release must contain only index.js and assets/runtime.js",
+		);
+	}
+	const entryStats = await stat(ENTRY_PATH);
+	if (entryStats.size > MAX_ENTRY_SIZE) {
+		throw new ReleaseVerificationError(
+			`Release entry exceeds ${MAX_ENTRY_SIZE} bytes`,
 		);
 	}
 	const entry = await readFile(ENTRY_PATH, "utf8");
-	if (entry.includes("./fonts/")) {
+	const runtime = await readFile(RUNTIME_PATH, "utf8");
+	if (runtime.includes("./fonts/")) {
 		throw new ReleaseVerificationError(
-			"Release entry contains unresolved font paths",
+			"Release runtime contains unresolved font paths",
 		);
 	}
-	if (!entry.includes(RUNTIME_ASSET_PREFIX)) {
+	if (entry.includes(".finally(() => URL.revokeObjectURL")) {
 		throw new ReleaseVerificationError(
-			"Release entry does not reference runtime assets",
+			"Release revokes the runtime module URL before extension unmount",
+		);
+	}
+	if (
+		!entry.includes(RUNTIME_ASSET_PREFIX) ||
+		!runtime.includes(RUNTIME_ASSET_PREFIX)
+	) {
+		throw new ReleaseVerificationError(
+			"Release modules do not reference runtime assets",
 		);
 	}
 };

@@ -12,6 +12,7 @@ import {
 } from "vue";
 import type { Buffer, OrgNoteApi } from "orgnote-api";
 import { createExcalidrawReader } from "./ExcalidrawReader";
+import { loadExcalidrawRuntime } from "./runtime-assets";
 
 interface SessionOptionsStub {
 	readonly content: string;
@@ -37,23 +38,26 @@ const mocks = vi.hoisted(() => {
 		),
 		host,
 		mountHost: vi.fn(async () => host),
+		logger: { error: vi.fn() },
 		notifications: { notify: vi.fn() },
 		session,
 		theme: { isDark: false },
 	};
 });
 
-vi.mock("./excalidraw-session", () => ({
-	createExcalidrawSession: mocks.createSession,
-}));
-
-vi.mock("./excalidraw-react-host", () => ({
-	mountExcalidrawHost: mocks.mountHost,
+vi.mock("./runtime-assets", () => ({
+	loadExcalidrawRuntime: vi.fn(async () => ({
+		createExcalidrawSession: mocks.createSession,
+		mountExcalidrawHost: mocks.mountHost,
+	})),
 }));
 
 const api = {
 	core: {
 		useNotifications: () => mocks.notifications,
+	},
+	utils: {
+		logger: mocks.logger,
 	},
 	ui: {
 		useTheme: () => mocks.theme,
@@ -121,6 +125,24 @@ test("ExcalidrawReader flushes pending changes before unmounting", async () => {
 	expect(mocks.host.destroy).toHaveBeenCalledOnce();
 });
 
+test("ExcalidrawReader reports runtime loading failures", async () => {
+	vi.mocked(loadExcalidrawRuntime).mockRejectedValueOnce(
+		new TypeError("Failed to fetch dynamically imported module"),
+	);
+
+	mount(ExcalidrawReader, { props: { buffer } });
+	await flushPromises();
+
+	expect(mocks.notifications.notify).toHaveBeenCalledWith(
+		expect.objectContaining({
+			message: expect.stringContaining(
+				"Failed to fetch dynamically imported module",
+			),
+		}),
+	);
+	expect(mocks.createSession).not.toHaveBeenCalled();
+});
+
 test("ExcalidrawReader reports invalid scene content without mounting a canvas", async () => {
 	mocks.createSession.mockImplementationOnce(() => {
 		throw new Error("Invalid scene");
@@ -130,9 +152,26 @@ test("ExcalidrawReader reports invalid scene content without mounting a canvas",
 	await flushPromises();
 
 	expect(mocks.notifications.notify).toHaveBeenCalledWith(
-		expect.objectContaining({ level: "danger" }),
+		expect.objectContaining({
+			level: "danger",
+			message: expect.stringContaining("Invalid scene"),
+		}),
 	);
+	expect(mocks.logger.error).toHaveBeenCalledOnce();
 	expect(mocks.mountHost).not.toHaveBeenCalled();
+});
+
+test("ExcalidrawReader reports canvas mounting failures", async () => {
+	mocks.mountHost.mockRejectedValueOnce(new Error("Canvas unavailable"));
+
+	mount(ExcalidrawReader, { props: { buffer } });
+	await flushPromises();
+
+	expect(mocks.notifications.notify).toHaveBeenCalledWith(
+		expect.objectContaining({
+			message: expect.stringContaining("Canvas unavailable"),
+		}),
+	);
 });
 
 test("ExcalidrawReader applies external buffer changes to the mounted canvas", async () => {

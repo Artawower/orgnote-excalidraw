@@ -1404,5 +1404,11 @@ export const extensionAssets = [
     "mediaType": "font/woff2",
     "size": 47276,
     "integrity": "sha256-rggwN7+2kc+WIF4QmihyVfh6RakISP4qY8sLPnrz6QQ="
+  },
+  {
+    "path": "runtime.js",
+    "mediaType": "text/javascript",
+    "size": 10597128,
+    "integrity": "sha256-D3K6jfBo0f4sGLGPFrz/z2VmhukrfhKSNHz0uIFrNqc="
   }
 ] as const satisfies readonly ExtensionAssetDescriptor[];

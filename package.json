@@ -1,10 +1,12 @@
 {
   "name": "orgnote-excalidraw",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "bun run clear && bun run generate:assets && vite build",
+    "build": "bun run clear && bun run build:runtime && bun run generate:assets && bun run build:entry",
+    "build:entry": "vite build --mode entry",
+    "build:runtime": "vite build --mode runtime",
     "clear": "rm -rf dist",
     "generate:assets": "bun scripts/generate-assets.ts",
     "lint": "eslint -c eslint.config.js \"src/**/*.{ts,vue}\" \"scripts/**/*.ts\" vite.config.ts",

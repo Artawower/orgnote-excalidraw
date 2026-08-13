@@ -18,9 +18,16 @@ export interface LoadedExcalidrawScene {
 	readonly scrollToContent?: boolean;
 }
 
+const ORG_CONTENT_PATTERN = /^(?::PROPERTIES:|#\+[A-Z_]+:|\*\s)/i;
+
 export class InvalidExcalidrawSceneError extends Error {
-	constructor(cause?: unknown) {
-		super("The file does not contain a valid Excalidraw scene", { cause });
+	constructor(cause?: unknown, content = "") {
+		const detail = ORG_CONTENT_PATTERN.test(content.trimStart())
+			? ": the file contains Org-mode content"
+			: "";
+		super(`The file does not contain a valid Excalidraw scene${detail}`, {
+			cause,
+		});
 		this.name = "InvalidExcalidrawSceneError";
 	}
 }
@@ -41,17 +48,32 @@ const createBlankScene = (): LoadedExcalidrawScene => ({
 	scrollToContent: true,
 });
 
-const parseAndRestoreScene = to(
-	(content: string): LoadedExcalidrawScene => {
-		const parsed: unknown = JSON.parse(content);
-		if (!isImportedScene(parsed)) throw new InvalidExcalidrawSceneError();
-		return restore(parsed, null, null, { repairBindings: true });
-	},
-	(cause): InvalidExcalidrawSceneError =>
-		cause instanceof InvalidExcalidrawSceneError
-			? cause
-			: new InvalidExcalidrawSceneError(cause),
+const parseJson = to((content: string): unknown =>
+	Reflect.apply(JSON.parse, JSON, [content]),
 );
+
+const restoreScene = (
+	parsed: unknown,
+	content: string,
+): LoadedExcalidrawScene => {
+	if (!isImportedScene(parsed)) {
+		throw new InvalidExcalidrawSceneError(undefined, content);
+	}
+	return restore(parsed, null, null, { repairBindings: true });
+};
+
+const parseAndRestoreScene = (content: string) =>
+	parseJson(content)
+		.mapErr((cause) => new InvalidExcalidrawSceneError(cause, content))
+		.andThen(
+			to(
+				(parsed): LoadedExcalidrawScene => restoreScene(parsed, content),
+				(cause): InvalidExcalidrawSceneError =>
+					cause instanceof InvalidExcalidrawSceneError
+						? cause
+						: new InvalidExcalidrawSceneError(cause, content),
+			),
+		);
 
 export const loadExcalidrawScene = (content: string): LoadedExcalidrawScene => {
 	if (!content.trim()) return createBlankScene();

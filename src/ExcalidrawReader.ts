@@ -8,6 +8,7 @@ import type {
 	ExcalidrawAppearance,
 	ExcalidrawHost,
 } from "./excalidraw-react-host";
+import { loadExcalidrawRuntime } from "./runtime-assets";
 
 interface ExcalidrawReaderProps {
 	readonly buffer: Buffer;
@@ -39,9 +40,15 @@ export const createExcalidrawReader = (api: OrgNoteApi) => {
 				theme: theme.isDark ? "dark" : "light",
 			});
 
-			const notifyLoadError = (): void => {
+			const getRootCause = (error: Error): Error =>
+				error.cause instanceof Error ? getRootCause(error.cause) : error;
+
+			const notifyLoadError = (error?: Error): void => {
+				const cause = error ? getRootCause(error) : undefined;
+				if (cause) api.utils.logger.error(cause.message, cause);
+				const detail = cause?.message ? `: ${cause.message}` : "";
 				api.core.useNotifications().notify({
-					message: "Unable to open the Excalidraw drawing",
+					message: `Unable to open the Excalidraw drawing${detail}`,
 					level: "danger",
 				});
 			};
@@ -49,29 +56,37 @@ export const createExcalidrawReader = (api: OrgNoteApi) => {
 			const initializeReader = async (): Promise<void> => {
 				const hostContainer = container.value;
 				if (!hostContainer) return;
-				const initialize = to(async () => {
-					const [sessionModule, hostModule] = await Promise.all([
-						import("./excalidraw-session"),
-						import("./excalidraw-react-host"),
-					]);
-					session = sessionModule.createExcalidrawSession({
-						content: props.buffer.text,
-						onContentChange: (content) => emit("update:content", content),
-						viewState: props.viewState,
-					});
-					const mountedHost = await hostModule.mountExcalidrawHost({
-						container: hostContainer,
-						initialData: session.initialData,
-						name: props.buffer.title,
-						session,
-						...getAppearance(),
-					});
-					if (!isUnmounted) host = mountedHost;
-					if (isUnmounted) mountedHost.destroy();
-				}, "Failed to initialize Excalidraw");
 
-				const result = await initialize();
-				if (result.isErr()) notifyLoadError();
+				const runtimeResult = await to(
+					loadExcalidrawRuntime,
+					"Failed to load Excalidraw runtime",
+				)(api);
+				if (runtimeResult.isErr()) return notifyLoadError(runtimeResult.error);
+
+				const sessionResult = to(
+					runtimeResult.value.createExcalidrawSession,
+					"Failed to parse Excalidraw drawing",
+				)({
+					content: props.buffer.text,
+					onContentChange: (content) => emit("update:content", content),
+					viewState: props.viewState,
+				});
+				if (sessionResult.isErr()) return notifyLoadError(sessionResult.error);
+				session = sessionResult.value;
+
+				const hostResult = await to(
+					runtimeResult.value.mountExcalidrawHost,
+					"Failed to mount Excalidraw canvas",
+				)({
+					container: hostContainer,
+					initialData: session.initialData,
+					name: props.buffer.title,
+					session,
+					...getAppearance(),
+				});
+				if (hostResult.isErr()) return notifyLoadError(hostResult.error);
+				if (!isUnmounted) host = hostResult.value;
+				if (isUnmounted) hostResult.value.destroy();
 			};
 
 			const applyBufferContent = (content: string): void => {

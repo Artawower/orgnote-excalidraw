@@ -10,7 +10,7 @@ Ship Excalidraw as an independently installable OrgNote extension whose release 
 
 - Keep the production installation path Git-based and validate local release artifacts without adding a new public local-package API.
 - Use `orgnote-api` as the only dependency boundary between the extension and OrgNote.
-- Bundle Vue, React, ReactDOM, Excalidraw, styles, and workers into `dist/index.js`.
+- Keep lifecycle and viewer registration in a small `dist/index.js`; bundle React, ReactDOM, Excalidraw, styles, and workers into the declared `dist/assets/runtime.js` loaded only when a drawing opens.
 - Store fonts as `dist/assets/**` and declare every file with size and SHA-256 integrity.
 - Treat OrgNote runtime files as a reproducible local cache and preserve the previous working extension during failed updates.
 
@@ -65,7 +65,7 @@ Repository: `orgnote-excalidraw`
 
 ## Out of Scope
 
-- General JavaScript chunk support for extensions.
+- General host-managed JavaScript chunk resolution for extensions.
 - Host-managed asset URLs or custom protocols.
 - Extension sandboxing and permission enforcement.
 - Publishing or pushing repositories.
