@@ -10,6 +10,10 @@ const RUNTIME_PATH = path.join(DIST_DIRECTORY, "assets", "runtime.js");
 const MANIFEST_PATH = path.join(DIST_DIRECTORY, "manifest.json");
 const MAX_ENTRY_SIZE = 500_000;
 const RUNTIME_ASSET_PREFIX = "orgnote-extension-asset:";
+const RUNTIME_FONT_BRIDGE_MARKERS = [
+	"__orgnoteExcalidrawCreateFontFace",
+	"__orgnoteExcalidrawResolveFontFaces",
+] as const;
 
 class ReleaseVerificationError extends Error {
 	constructor(message: string) {
@@ -49,6 +53,11 @@ const verifyEntry = async (): Promise<void> => {
 	if (runtime.includes("./fonts/")) {
 		throw new ReleaseVerificationError(
 			"Release runtime contains unresolved font paths",
+		);
+	}
+	if (RUNTIME_FONT_BRIDGE_MARKERS.some((marker) => !runtime.includes(marker))) {
+		throw new ReleaseVerificationError(
+			"Release runtime does not use the packaged font bridge",
 		);
 	}
 	if (entry.includes(".finally(() => URL.revokeObjectURL")) {

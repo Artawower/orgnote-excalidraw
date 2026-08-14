@@ -1,6 +1,6 @@
 {
   "name": "excalidraw",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "category": "extension",
   "description": "Open and edit Excalidraw drawings",
   "source": {
@@ -1422,8 +1422,8 @@
     {
       "path": "runtime.js",
       "mediaType": "text/javascript",
-      "size": 10597128,
-      "integrity": "sha256-D3K6jfBo0f4sGLGPFrz/z2VmhukrfhKSNHz0uIFrNqc="
+      "size": 10597345,
+      "integrity": "sha256-HRzCDEsPncfgraoHg79ZkescmjRflwZjk9TEaicGvr4="
     }
   ]
 }

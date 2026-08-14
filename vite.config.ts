@@ -10,6 +10,10 @@ const DATA_URL_GUARD_PATTERN =
 	/if\((\w+)\.startsWith\("data"\)\)return\[\1\];/g;
 const FONT_FETCH_PATTERN =
 	/fetch\((\w+),\{cache:"force-cache",headers:\{Accept:"font\/woff2"\}\}\)/g;
+const FONT_FACE_CONSTRUCTOR_PATTERN =
+	/this\.fontFace\s*=\s*new FontFace\((\w+),\s*(\w+),\s*(\{[^;]+?\})\)/g;
+const FONT_LOAD_PATTERN =
+	/(const|let)\s+(\w+)\s*=\s*await window\.document\.fonts\.load\((\w+),\s*(\w+)\);/g;
 const ASSETS_DIRECTORY = "assets";
 const DIST_DIRECTORY = "dist";
 const RUNTIME_ASSET_PREFIX = "orgnote-extension-asset:";
@@ -38,6 +42,15 @@ const runtimeAssetsPlugin = (isEntryBuild: boolean): Plugin => ({
 		if (!id.includes("@excalidraw/excalidraw/dist/")) return undefined;
 		return code
 			.replace(ASSISTANT_FONT_FACE_PATTERN, "")
+			.replace(
+				FONT_FACE_CONSTRUCTOR_PATTERN,
+				(_match, family: string, sources: string, descriptors: string) =>
+					`this.fontFace=globalThis.__orgnoteExcalidrawCreateFontFace({family:${family},urls:this.urls,sources:${sources},descriptors:${descriptors},replace:font=>{this.fontFace=font}})`,
+			)
+			.replace(
+				FONT_LOAD_PATTERN,
+				"await globalThis.__orgnoteExcalidrawResolveFontFaces($3,$4);$1 $2=await window.document.fonts.load($3,$4);",
+			)
 			.replace(
 				FONT_REFERENCE_PATTERN,
 				(_match, quote: string, assetPath: string) =>

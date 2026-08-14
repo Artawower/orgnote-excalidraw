@@ -1,5 +1,11 @@
 import { getExtensionAssetPath, type OrgNoteApi } from "orgnote-api";
 import { excalidrawManifest } from "./manifest";
+import {
+	createRuntimeFontBridge,
+	type RuntimeFontBridge,
+	type RuntimeFontFaceFactory,
+	type RuntimeFontFaceResolver,
+} from "./runtime-fonts";
 
 const RUNTIME_ASSET_PREFIX = "orgnote-extension-asset:";
 const ASSISTANT_FONTS = [
@@ -22,9 +28,12 @@ let runtimePromise: Promise<ExcalidrawRuntimeModule> | undefined;
 let runtimeModuleUrl: string | undefined;
 let assistantFontsPromise: Promise<() => void> | undefined;
 let releaseAssistantFonts: (() => void) | undefined;
+let runtimeFontBridge: RuntimeFontBridge | undefined;
 
 type ExcalidrawRuntimeGlobal = typeof globalThis & {
+	__orgnoteExcalidrawCreateFontFace?: RuntimeFontFaceFactory;
 	__orgnoteExcalidrawFetch?: ExcalidrawAssetFetch;
+	__orgnoteExcalidrawResolveFontFaces?: RuntimeFontFaceResolver;
 };
 
 export const createRuntimeAssetUri = (assetPath: string): string =>
@@ -143,6 +152,8 @@ export const releaseExcalidrawRuntimeAssets = (): void => {
 	releaseAssistantFonts?.();
 	releaseAssistantFonts = undefined;
 	assistantFontsPromise = undefined;
+	runtimeFontBridge?.release();
+	runtimeFontBridge = undefined;
 	runtimePromise = undefined;
 	if (!runtimeModuleUrl) return;
 	URL.revokeObjectURL(runtimeModuleUrl);
@@ -158,8 +169,18 @@ export const installRuntimeAssetFetch = (api: OrgNoteApi): (() => void) => {
 		}
 		return createRuntimeResponse(api, uri);
 	};
+	const fontBridge = createRuntimeFontBridge({
+		isRuntimeAssetUri,
+		readRuntimeAsset: (uri) => readRuntimeAsset(api, uri),
+	});
+	runtimeFontBridge = fontBridge;
+	runtimeGlobal.__orgnoteExcalidrawCreateFontFace = fontBridge.createFontFace;
 	runtimeGlobal.__orgnoteExcalidrawFetch = fetchRuntimeAsset;
+	runtimeGlobal.__orgnoteExcalidrawResolveFontFaces =
+		fontBridge.resolveFontFaces;
 	return () => {
+		runtimeGlobal.__orgnoteExcalidrawCreateFontFace = undefined;
 		runtimeGlobal.__orgnoteExcalidrawFetch = undefined;
+		runtimeGlobal.__orgnoteExcalidrawResolveFontFaces = undefined;
 	};
 };
